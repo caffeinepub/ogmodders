@@ -1,0 +1,250 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Bricolage Grotesque (Display) ─────────────────────────── */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque-VariableFont.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Cabinet Grotesk (Body) ─────────────────────────────────── */
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("/assets/fonts/CabinetGrotesk-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Mona Sans (Mono/Tags) ──────────────────────────────────── */
+@font-face {
+  font-family: "Mona Sans";
+  src: url("/assets/fonts/MonaSans-VariableFont.woff2") format("woff2");
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.25rem;
+
+    /* ── OGModders Light Theme ─────────────────────────────── */
+    /* background: pure white */
+    --background: 1 0 0;
+    /* foreground: near-black */
+    --foreground: 0.12 0 0;
+
+    /* card: clean white */
+    --card: 1 0 0;
+    --card-foreground: 0.12 0 0;
+
+    --popover: 1 0 0;
+    --popover-foreground: 0.12 0 0;
+
+    /* primary: GTA neon yellow-green */
+    --primary: 0.82 0.20 128;
+    --primary-foreground: 0.08 0 0;
+
+    /* secondary: light grey */
+    --secondary: 0.95 0 0;
+    --secondary-foreground: 0.20 0 0;
+
+    /* muted */
+    --muted: 0.95 0 0;
+    --muted-foreground: 0.50 0 0;
+
+    /* accent: near-black dark */
+    --accent: 0.12 0 0;
+    --accent-foreground: 1 0 0;
+
+    /* destructive */
+    --destructive: 0.55 0.22 22;
+    --destructive-foreground: 1 0 0;
+
+    /* borders */
+    --border: 0.88 0 0;
+    --input: 0.85 0 0;
+    --ring: 0.82 0.20 128;
+
+    /* charts */
+    --chart-1: 0.82 0.20 128;
+    --chart-2: 0.55 0.22 22;
+    --chart-3: 0.65 0.18 55;
+    --chart-4: 0.50 0.18 280;
+    --chart-5: 0.60 0.18 200;
+
+    /* sidebar */
+    --sidebar: 0.10 0 0;
+    --sidebar-foreground: 0.92 0 0;
+    --sidebar-primary: 0.82 0.20 128;
+    --sidebar-primary-foreground: 0.08 0 0;
+    --sidebar-accent: 0.18 0 0;
+    --sidebar-accent-foreground: 0.85 0 0;
+    --sidebar-border: 0.22 0 0;
+    --sidebar-ring: 0.82 0.20 128;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: light;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Cabinet Grotesk", sans-serif;
+    background-color: oklch(1 0 0);
+    min-height: 100vh;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: oklch(0.94 0 0);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.82 0.20 128 / 0.6);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.82 0.20 128 / 0.9);
+  }
+}
+
+@layer utilities {
+  /* GTA accent glow effects – lighter for white bg */
+  .glow-primary {
+    box-shadow: 0 0 16px oklch(0.82 0.20 128 / 0.35), 0 0 32px oklch(0.82 0.20 128 / 0.15);
+  }
+  .glow-primary-sm {
+    box-shadow: 0 0 8px oklch(0.82 0.20 128 / 0.5), 0 0 14px oklch(0.82 0.20 128 / 0.25);
+  }
+  .text-glow-primary {
+    text-shadow: 0 0 18px oklch(0.82 0.20 128 / 0.5), 0 0 36px oklch(0.82 0.20 128 / 0.25);
+  }
+  .text-glow-dark {
+    text-shadow: 0 2px 12px oklch(0 0 0 / 0.25);
+  }
+  .font-display {
+    font-family: "Bricolage Grotesque", sans-serif;
+  }
+  .font-mono-gta {
+    font-family: "Mona Sans", sans-serif;
+  }
+  .border-glow {
+    border-color: oklch(0.82 0.20 128 / 0.5);
+    box-shadow: 0 0 8px oklch(0.82 0.20 128 / 0.25), inset 0 0 8px oklch(0.82 0.20 128 / 0.05);
+  }
+  .card-hover {
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    cursor: pointer;
+  }
+  .card-hover:hover {
+    transform: translateY(-5px);
+    border-color: oklch(0.82 0.20 128 / 0.7);
+    box-shadow: 0 12px 40px oklch(0 0 0 / 0.12), 0 0 0 2px oklch(0.82 0.20 128 / 0.2);
+  }
+  .nav-link {
+    position: relative;
+    transition: color 0.2s ease;
+  }
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: oklch(0.82 0.20 128);
+    transition: width 0.2s ease;
+  }
+  .nav-link:hover::after {
+    width: 100%;
+  }
+  .section-title-line {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .section-title-line::before {
+    content: '';
+    width: 4px;
+    height: 2rem;
+    background: oklch(0.82 0.20 128);
+    box-shadow: 0 0 10px oklch(0.82 0.20 128 / 0.5);
+    flex-shrink: 0;
+  }
+  /* Category badge colors – adapted for white bg */
+  .cat-vehicles {
+    background: oklch(0.93 0.06 250);
+    color: oklch(0.35 0.15 250);
+    border: 1px solid oklch(0.80 0.10 250);
+  }
+  .cat-weapons {
+    background: oklch(0.95 0.05 22);
+    color: oklch(0.40 0.20 22);
+    border: 1px solid oklch(0.82 0.10 22);
+  }
+  .cat-scripts {
+    background: oklch(0.93 0.07 142);
+    color: oklch(0.35 0.15 142);
+    border: 1px solid oklch(0.80 0.10 142);
+  }
+  .cat-maps {
+    background: oklch(0.95 0.06 55);
+    color: oklch(0.42 0.18 55);
+    border: 1px solid oklch(0.82 0.10 55);
+  }
+  .cat-player {
+    background: oklch(0.94 0.05 300);
+    color: oklch(0.38 0.14 300);
+    border: 1px solid oklch(0.80 0.10 300);
+  }
+}
+
+/* Keyframe animations */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes slide-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-slide-in-up {
+  animation: slide-in-up 0.4s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.35s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
