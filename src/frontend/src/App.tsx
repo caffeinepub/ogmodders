@@ -1366,18 +1366,12 @@ function HeroSection({ modCount }: { modCount: number }) {
               suffix: "",
               label: "CATEGORIES",
             },
-            {
-              icon: <Download className="w-4 h-4" />,
-              value: 1,
-              suffix: "",
-              label: "UPLOADER",
-            },
           ].map((stat, i) => (
             <div
               key={stat.label}
               className="flex items-center gap-3 px-6 py-4"
               style={{
-                borderRight: i < 2 ? "1px solid oklch(0.22 0 0)" : "none",
+                borderRight: i < 1 ? "1px solid oklch(0.22 0 0)" : "none",
               }}
             >
               <div style={{ color: "oklch(0.82 0.20 128)" }}>{stat.icon}</div>
