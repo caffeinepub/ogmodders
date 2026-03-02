@@ -7,6 +7,7 @@ import {
   Crosshair,
   Download,
   ExternalLink,
+  Loader2,
   Map as MapIcon,
   Menu,
   Pencil,
@@ -19,12 +20,14 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SiDiscord, SiX, SiYoutube } from "react-icons/si";
+import type { backendInterface } from "./backend";
+import { useActor } from "./hooks/useActor";
 
 // ── Types ──────────────────────────────────────────────────────
 interface Mod {
-  id: number;
+  id: bigint;
   title: string;
   category: string;
   author: string;
@@ -35,8 +38,6 @@ interface Mod {
 }
 
 // ── Constants ──────────────────────────────────────────────────
-const INITIAL_MODS: Mod[] = [];
-
 const CATEGORIES_LIST = ["Vehicles", "Weapons", "Scripts", "Maps", "Player"];
 
 const ADMIN_PIN = "4098203457810923";
@@ -345,18 +346,23 @@ const EMPTY_FORM: Omit<Mod, "id"> = {
 
 function AdminPanel({
   mods,
-  setMods,
+  actor,
+  refreshMods,
   isOpen,
   onClose,
 }: {
   mods: Mod[];
-  setMods: React.Dispatch<React.SetStateAction<Mod[]>>;
+  actor: backendInterface | null;
+  refreshMods: () => Promise<void>;
   isOpen: boolean;
   onClose: () => void;
 }) {
   const [editingMod, setEditingMod] = useState<Mod | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState<Omit<Mod, "id">>(EMPTY_FORM);
+  const [isSaving, setIsSaving] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<bigint | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const openAdd = () => {
     setFormData(EMPTY_FORM);
@@ -384,23 +390,48 @@ function AdminPanel({
     setFormData(EMPTY_FORM);
   };
 
-  const saveForm = () => {
-    if (!formData.title.trim()) return;
-    if (editingMod) {
-      setMods((prev) =>
-        prev.map((m) =>
-          m.id === editingMod.id ? { ...formData, id: editingMod.id } : m,
-        ),
-      );
-    } else {
-      setMods((prev) => [...prev, { ...formData, id: Date.now() }]);
+  const saveForm = async () => {
+    if (!formData.title.trim() || !actor) return;
+    setIsSaving(true);
+    try {
+      if (editingMod) {
+        await actor.updateMod(
+          editingMod.id,
+          formData.title,
+          formData.category,
+          formData.author,
+          formData.tags,
+          formData.image,
+          formData.description,
+          formData.downloadUrl,
+        );
+      } else {
+        await actor.addMod(
+          formData.title,
+          formData.category,
+          formData.author,
+          formData.tags,
+          formData.image,
+          formData.description,
+          formData.downloadUrl,
+        );
+      }
+      await refreshMods();
+      cancelForm();
+    } finally {
+      setIsSaving(false);
     }
-    cancelForm();
   };
 
-  const deleteMod = (mod: Mod) => {
-    if (window.confirm(`Delete "${mod.title}"? This cannot be undone.`)) {
-      setMods((prev) => prev.filter((m) => m.id !== mod.id));
+  const confirmDelete = async () => {
+    if (!actor || confirmDeleteId === null) return;
+    setIsDeleting(true);
+    try {
+      await actor.deleteMod(confirmDeleteId);
+      await refreshMods();
+      setConfirmDeleteId(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -572,90 +603,194 @@ function AdminPanel({
               ) : (
                 <div className="space-y-2">
                   {mods.map((mod) => (
-                    <div
-                      key={mod.id}
-                      className="flex items-center gap-3 p-3"
-                      style={{
-                        background: "oklch(0.14 0 0)",
-                        border: "1px solid oklch(0.20 0 0)",
-                        borderRadius: "2px",
-                      }}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className="font-display font-bold text-xs uppercase tracking-wide truncate"
-                          style={{ color: "oklch(0.88 0 0)" }}
-                        >
-                          {mod.title}
-                        </p>
-                        <span
-                          className={`text-[9px] font-display font-bold uppercase tracking-wider px-1.5 py-0.5 mt-1 inline-block ${getCategoryClass(mod.category)}`}
-                          style={{ borderRadius: "2px" }}
-                        >
-                          {mod.category}
-                        </span>
+                    <div key={String(mod.id)} className="space-y-0">
+                      <div
+                        className="flex items-center gap-3 p-3"
+                        style={{
+                          background: "oklch(0.14 0 0)",
+                          border: "1px solid oklch(0.20 0 0)",
+                          borderRadius:
+                            confirmDeleteId === mod.id ? "2px 2px 0 0" : "2px",
+                        }}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className="font-display font-bold text-xs uppercase tracking-wide truncate"
+                            style={{ color: "oklch(0.88 0 0)" }}
+                          >
+                            {mod.title}
+                          </p>
+                          <span
+                            className={`text-[9px] font-display font-bold uppercase tracking-wider px-1.5 py-0.5 mt-1 inline-block ${getCategoryClass(mod.category)}`}
+                            style={{ borderRadius: "2px" }}
+                          >
+                            {mod.category}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(mod)}
+                            className="w-7 h-7 flex items-center justify-center transition-all duration-150"
+                            style={{
+                              background: "oklch(0.17 0 0)",
+                              border: "1px solid oklch(0.26 0 0)",
+                              color: "oklch(0.55 0 0)",
+                              borderRadius: "2px",
+                            }}
+                            onMouseEnter={(e) =>
+                              applyHover(e.currentTarget as HTMLElement, {
+                                color: "oklch(0.82 0.20 128)",
+                                borderColor: "oklch(0.82 0.20 128 / 0.4)",
+                                background: "oklch(0.82 0.20 128 / 0.1)",
+                              })
+                            }
+                            onMouseLeave={(e) =>
+                              applyHover(e.currentTarget as HTMLElement, {
+                                color: "oklch(0.55 0 0)",
+                                borderColor: "oklch(0.26 0 0)",
+                                background: "oklch(0.17 0 0)",
+                              })
+                            }
+                            aria-label={`Edit ${mod.title}`}
+                            title="Edit"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(mod.id)}
+                            className="w-7 h-7 flex items-center justify-center transition-all duration-150"
+                            style={{
+                              background:
+                                confirmDeleteId === mod.id
+                                  ? "oklch(0.60 0.22 22 / 0.15)"
+                                  : "oklch(0.17 0 0)",
+                              border:
+                                confirmDeleteId === mod.id
+                                  ? "1px solid oklch(0.60 0.22 22 / 0.5)"
+                                  : "1px solid oklch(0.26 0 0)",
+                              color:
+                                confirmDeleteId === mod.id
+                                  ? "oklch(0.60 0.22 22)"
+                                  : "oklch(0.55 0 0)",
+                              borderRadius: "2px",
+                            }}
+                            onMouseEnter={(e) =>
+                              applyHover(e.currentTarget as HTMLElement, {
+                                color: "oklch(0.60 0.22 22)",
+                                borderColor: "oklch(0.60 0.22 22 / 0.4)",
+                                background: "oklch(0.60 0.22 22 / 0.1)",
+                              })
+                            }
+                            onMouseLeave={(e) =>
+                              confirmDeleteId !== mod.id &&
+                              applyHover(e.currentTarget as HTMLElement, {
+                                color: "oklch(0.55 0 0)",
+                                borderColor: "oklch(0.26 0 0)",
+                                background: "oklch(0.17 0 0)",
+                              })
+                            }
+                            aria-label={`Delete ${mod.title}`}
+                            title="Delete"
+                            data-ocid="admin.delete_button"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(mod)}
-                          className="w-7 h-7 flex items-center justify-center transition-all duration-150"
+                      {/* Inline delete confirmation row */}
+                      {confirmDeleteId === mod.id && (
+                        <div
+                          className="flex items-center justify-between gap-3 px-3 py-2.5"
                           style={{
-                            background: "oklch(0.17 0 0)",
-                            border: "1px solid oklch(0.26 0 0)",
-                            color: "oklch(0.55 0 0)",
-                            borderRadius: "2px",
+                            background: "oklch(0.60 0.22 22 / 0.08)",
+                            border: "1px solid oklch(0.60 0.22 22 / 0.35)",
+                            borderTop: "none",
+                            borderRadius: "0 0 2px 2px",
                           }}
-                          onMouseEnter={(e) =>
-                            applyHover(e.currentTarget as HTMLElement, {
-                              color: "oklch(0.82 0.20 128)",
-                              borderColor: "oklch(0.82 0.20 128 / 0.4)",
-                              background: "oklch(0.82 0.20 128 / 0.1)",
-                            })
-                          }
-                          onMouseLeave={(e) =>
-                            applyHover(e.currentTarget as HTMLElement, {
-                              color: "oklch(0.55 0 0)",
-                              borderColor: "oklch(0.26 0 0)",
-                              background: "oklch(0.17 0 0)",
-                            })
-                          }
-                          aria-label={`Edit ${mod.title}`}
-                          title="Edit"
                         >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteMod(mod)}
-                          className="w-7 h-7 flex items-center justify-center transition-all duration-150"
-                          style={{
-                            background: "oklch(0.17 0 0)",
-                            border: "1px solid oklch(0.26 0 0)",
-                            color: "oklch(0.55 0 0)",
-                            borderRadius: "2px",
-                          }}
-                          onMouseEnter={(e) =>
-                            applyHover(e.currentTarget as HTMLElement, {
-                              color: "oklch(0.60 0.22 22)",
-                              borderColor: "oklch(0.60 0.22 22 / 0.4)",
-                              background: "oklch(0.60 0.22 22 / 0.1)",
-                            })
-                          }
-                          onMouseLeave={(e) =>
-                            applyHover(e.currentTarget as HTMLElement, {
-                              color: "oklch(0.55 0 0)",
-                              borderColor: "oklch(0.26 0 0)",
-                              background: "oklch(0.17 0 0)",
-                            })
-                          }
-                          aria-label={`Delete ${mod.title}`}
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                          <p
+                            className="font-display font-bold text-[10px] uppercase tracking-wider"
+                            style={{ color: "oklch(0.70 0.18 22)" }}
+                          >
+                            Delete this mod?
+                          </p>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={confirmDelete}
+                              disabled={isDeleting}
+                              className="flex items-center gap-1.5 px-3 py-1.5 font-display font-black text-[10px] uppercase tracking-wider transition-all duration-150"
+                              style={{
+                                background: isDeleting
+                                  ? "oklch(0.45 0.16 22)"
+                                  : "oklch(0.55 0.22 22)",
+                                color: "oklch(0.97 0 0)",
+                                borderRadius: "2px",
+                                cursor: isDeleting ? "not-allowed" : "pointer",
+                              }}
+                              onMouseEnter={(e) =>
+                                !isDeleting &&
+                                applyHover(e.currentTarget as HTMLElement, {
+                                  background: "oklch(0.62 0.24 22)",
+                                })
+                              }
+                              onMouseLeave={(e) =>
+                                !isDeleting &&
+                                applyHover(e.currentTarget as HTMLElement, {
+                                  background: "oklch(0.55 0.22 22)",
+                                })
+                              }
+                              data-ocid="admin.confirm_delete_button"
+                            >
+                              {isDeleting ? (
+                                <>
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                <>
+                                  <Trash2 className="w-3 h-3" />
+                                  Yes, Delete
+                                </>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              disabled={isDeleting}
+                              className="px-3 py-1.5 font-display font-black text-[10px] uppercase tracking-wider transition-all duration-150"
+                              style={{
+                                background: "transparent",
+                                color: "oklch(0.50 0 0)",
+                                border: "1px solid oklch(0.28 0 0)",
+                                borderRadius: "2px",
+                                cursor: isDeleting ? "not-allowed" : "pointer",
+                              }}
+                              onMouseEnter={(e) =>
+                                !isDeleting &&
+                                applyHover(e.currentTarget as HTMLElement, {
+                                  color: "oklch(0.75 0 0)",
+                                  borderColor: "oklch(0.40 0 0)",
+                                })
+                              }
+                              onMouseLeave={(e) =>
+                                !isDeleting &&
+                                applyHover(e.currentTarget as HTMLElement, {
+                                  color: "oklch(0.50 0 0)",
+                                  borderColor: "oklch(0.28 0 0)",
+                                })
+                              }
+                              data-ocid="admin.cancel_delete_button"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -923,26 +1058,41 @@ function AdminPanel({
                   <button
                     type="button"
                     onClick={saveForm}
-                    className="flex-1 py-3 font-display font-black text-xs uppercase tracking-widest transition-all duration-150"
+                    disabled={isSaving}
+                    className="flex-1 py-3 font-display font-black text-xs uppercase tracking-widest transition-all duration-150 flex items-center justify-center gap-2"
                     style={{
-                      background: "oklch(0.82 0.20 128)",
+                      background: isSaving
+                        ? "oklch(0.65 0.14 128)"
+                        : "oklch(0.82 0.20 128)",
                       color: "oklch(0.08 0 0)",
                       borderRadius: "2px",
-                      boxShadow: "0 0 14px oklch(0.82 0.20 128 / 0.3)",
+                      boxShadow: isSaving
+                        ? "none"
+                        : "0 0 14px oklch(0.82 0.20 128 / 0.3)",
+                      cursor: isSaving ? "not-allowed" : "pointer",
                     }}
                     onMouseEnter={(e) =>
+                      !isSaving &&
                       applyHover(e.currentTarget as HTMLElement, {
                         boxShadow:
                           "0 0 22px oklch(0.82 0.20 128 / 0.5), 0 2px 10px oklch(0.82 0.20 128 / 0.3)",
                       })
                     }
                     onMouseLeave={(e) =>
+                      !isSaving &&
                       applyHover(e.currentTarget as HTMLElement, {
                         boxShadow: "0 0 14px oklch(0.82 0.20 128 / 0.3)",
                       })
                     }
                   >
-                    {editingMod ? "Save Changes" : "Add Mod"}
+                    {isSaving && (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    )}
+                    {isSaving
+                      ? "Saving..."
+                      : editingMod
+                        ? "Save Changes"
+                        : "Add Mod"}
                   </button>
                   <button
                     type="button"
@@ -1981,7 +2131,11 @@ function FeaturedMods({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((mod) => (
-            <ModCard key={mod.id} mod={mod} onClick={() => onModClick(mod)} />
+            <ModCard
+              key={String(mod.id)}
+              mod={mod}
+              onClick={() => onModClick(mod)}
+            />
           ))}
         </div>
       )}
@@ -2199,7 +2353,9 @@ function Footer() {
 
 // ── App ────────────────────────────────────────────────────────
 export default function App() {
-  const [mods, setMods] = useState<Mod[]>(INITIAL_MODS);
+  const { actor, isFetching: actorFetching } = useActor();
+  const [mods, setMods] = useState<Mod[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [selectedMod, setSelectedMod] = useState<Mod | null>(null);
@@ -2210,6 +2366,23 @@ export default function App() {
     document.documentElement.classList.remove("dark");
     document.title = "OGModders – The Ultimate GTA 5 Mod Hub";
   }, []);
+
+  const refreshMods = useCallback(async () => {
+    if (!actor) return;
+    try {
+      const fetched = await actor.getMods();
+      setMods(fetched);
+    } catch (err) {
+      console.error("Failed to load mods:", err);
+    }
+  }, [actor]);
+
+  useEffect(() => {
+    if (actorFetching) return;
+    if (!actor) return;
+    setLoading(true);
+    refreshMods().finally(() => setLoading(false));
+  }, [actor, actorFetching, refreshMods]);
 
   const handleAdminClick = () => {
     setPinModalOpen(true);
@@ -2255,7 +2428,8 @@ export default function App() {
         />
         <AdminPanel
           mods={mods}
-          setMods={setMods}
+          actor={actor}
+          refreshMods={refreshMods}
           isOpen={adminOpen}
           onClose={() => setAdminOpen(false)}
         />
@@ -2275,13 +2449,30 @@ export default function App() {
         {/* Light background sections */}
         <div style={{ background: "oklch(1 0 0)" }}>
           <CategoriesSection onFilterSelect={handleFilterSelect} />
-          <FeaturedMods
-            mods={mods}
-            searchQuery={searchQuery}
-            activeFilter={activeFilter}
-            onFilterChange={setActiveFilter}
-            onModClick={handleModClick}
-          />
+          {loading ? (
+            <section id="mods" className="py-20 px-4 max-w-7xl mx-auto">
+              <div className="flex flex-col items-center justify-center py-24 gap-4">
+                <Loader2
+                  className="w-10 h-10 animate-spin"
+                  style={{ color: "oklch(0.82 0.20 128)" }}
+                />
+                <p
+                  className="font-display font-bold text-sm uppercase tracking-widest"
+                  style={{ color: "oklch(0.50 0 0)" }}
+                >
+                  Loading Mods...
+                </p>
+              </div>
+            </section>
+          ) : (
+            <FeaturedMods
+              mods={mods}
+              searchQuery={searchQuery}
+              activeFilter={activeFilter}
+              onFilterChange={setActiveFilter}
+              onModClick={handleModClick}
+            />
+          )}
         </div>
       </main>
       <Footer />
@@ -2292,7 +2483,8 @@ export default function App() {
       />
       <AdminPanel
         mods={mods}
-        setMods={setMods}
+        actor={actor}
+        refreshMods={refreshMods}
         isOpen={adminOpen}
         onClose={() => setAdminOpen(false)}
       />

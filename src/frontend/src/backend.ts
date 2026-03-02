@@ -89,22 +89,77 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface Mod {
+    id: bigint;
+    title: string;
+    tags: Array<string>;
+    description: string;
+    downloadUrl: string;
+    author: string;
+    category: string;
+    image: string;
+}
 export interface backendInterface {
-    ping(): Promise<string>;
+    addMod(title: string, category: string, author: string, tags: Array<string>, image: string, description: string, downloadUrl: string): Promise<bigint>;
+    deleteMod(id: bigint): Promise<boolean>;
+    getMods(): Promise<Array<Mod>>;
+    updateMod(id: bigint, title: string, category: string, author: string, tags: Array<string>, image: string, description: string, downloadUrl: string): Promise<boolean>;
 }
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
-    async ping(): Promise<string> {
+    async addMod(arg0: string, arg1: string, arg2: string, arg3: Array<string>, arg4: string, arg5: string, arg6: string): Promise<bigint> {
         if (this.processError) {
             try {
-                const result = await this.actor.ping();
+                const result = await this.actor.addMod(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.ping();
+            const result = await this.actor.addMod(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
+            return result;
+        }
+    }
+    async deleteMod(arg0: bigint): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteMod(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteMod(arg0);
+            return result;
+        }
+    }
+    async getMods(): Promise<Array<Mod>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMods();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMods();
+            return result;
+        }
+    }
+    async updateMod(arg0: bigint, arg1: string, arg2: string, arg3: string, arg4: Array<string>, arg5: string, arg6: string, arg7: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateMod(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateMod(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
             return result;
         }
     }

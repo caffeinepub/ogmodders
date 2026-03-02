@@ -8,14 +8,94 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const Mod = IDL.Record({
+  'id' : IDL.Nat,
+  'title' : IDL.Text,
+  'tags' : IDL.Vec(IDL.Text),
+  'description' : IDL.Text,
+  'downloadUrl' : IDL.Text,
+  'author' : IDL.Text,
+  'category' : IDL.Text,
+  'image' : IDL.Text,
+});
+
 export const idlService = IDL.Service({
-  'ping' : IDL.Func([], [IDL.Text], ['query']),
+  'addMod' : IDL.Func(
+      [
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Vec(IDL.Text),
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+      ],
+      [IDL.Nat],
+      [],
+    ),
+  'deleteMod' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+  'getMods' : IDL.Func([], [IDL.Vec(Mod)], ['query']),
+  'updateMod' : IDL.Func(
+      [
+        IDL.Nat,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Vec(IDL.Text),
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+      ],
+      [IDL.Bool],
+      [],
+    ),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
-  return IDL.Service({ 'ping' : IDL.Func([], [IDL.Text], ['query']) });
+  const Mod = IDL.Record({
+    'id' : IDL.Nat,
+    'title' : IDL.Text,
+    'tags' : IDL.Vec(IDL.Text),
+    'description' : IDL.Text,
+    'downloadUrl' : IDL.Text,
+    'author' : IDL.Text,
+    'category' : IDL.Text,
+    'image' : IDL.Text,
+  });
+  
+  return IDL.Service({
+    'addMod' : IDL.Func(
+        [
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Vec(IDL.Text),
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+        ],
+        [IDL.Nat],
+        [],
+      ),
+    'deleteMod' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+    'getMods' : IDL.Func([], [IDL.Vec(Mod)], ['query']),
+    'updateMod' : IDL.Func(
+        [
+          IDL.Nat,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Vec(IDL.Text),
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+        ],
+        [IDL.Bool],
+        [],
+      ),
+  });
 };
 
 export const init = ({ IDL }) => { return []; };

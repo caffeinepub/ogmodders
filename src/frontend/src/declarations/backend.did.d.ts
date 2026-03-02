@@ -10,7 +10,28 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface _SERVICE { 'ping' : ActorMethod<[], string> }
+export interface Mod {
+  'id' : bigint,
+  'title' : string,
+  'tags' : Array<string>,
+  'description' : string,
+  'downloadUrl' : string,
+  'author' : string,
+  'category' : string,
+  'image' : string,
+}
+export interface _SERVICE {
+  'addMod' : ActorMethod<
+    [string, string, string, Array<string>, string, string, string],
+    bigint
+  >,
+  'deleteMod' : ActorMethod<[bigint], boolean>,
+  'getMods' : ActorMethod<[], Array<Mod>>,
+  'updateMod' : ActorMethod<
+    [bigint, string, string, string, Array<string>, string, string, string],
+    boolean
+  >,
+}
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
 export declare const idlFactory: IDL.InterfaceFactory;
